@@ -102,7 +102,9 @@ impl WnacgClient {
         if status != StatusCode::OK {
             return Err(anyhow!("预料之外的状态码({status}): {body}"));
         }
-        let user_profile = UserProfile::from_html(&body).context("将body解析为UserProfile失败")?;
+        // 尝试将body解析为UserProfile
+        let user_profile = UserProfile::from_html(&body)
+            .context(format!("将body解析为UserProfile失败: {body}"))?;
         Ok(user_profile)
     }
 
@@ -130,8 +132,9 @@ impl WnacgClient {
         if status != StatusCode::OK {
             return Err(anyhow!("预料之外的状态码({status}): {body}"));
         }
-        let search_result =
-            SearchResult::from_html(&self.app, &body, false).context("将html转换为搜索结果失败")?;
+        // 尝试将body解析为SearchResult
+        let search_result = SearchResult::from_html(&self.app, &body, false)
+            .context(format!("将html解析为SearchResult失败: {body}"))?;
         Ok(search_result)
     }
 
@@ -152,8 +155,9 @@ impl WnacgClient {
         if status != StatusCode::OK {
             return Err(anyhow!("预料之外的状态码({status}): {body}"));
         }
-        let search_result =
-            SearchResult::from_html(&self.app, &body, true).context("将html转换为搜索结果失败")?;
+        // 尝试将body解析为SearchResult
+        let search_result = SearchResult::from_html(&self.app, &body, true)
+            .context(format!("将html解析为SearchResult失败: {body}"))?;
         Ok(search_result)
     }
 
@@ -189,8 +193,8 @@ impl WnacgClient {
             .replace("fast_img_host+", "")
             .replace("\\\"", "\"");
         // 将 JSON 字符串解析为 ImgList
-        let img_list =
-            serde_json::from_str::<ImgList>(json_str).context("将JSON字符串解析为ImgList失败")?;
+        let img_list = serde_json::from_str::<ImgList>(json_str)
+            .context(format!("将JSON字符串解析为ImgList失败: {json_str}"))?;
         Ok(img_list)
     }
 
@@ -208,8 +212,9 @@ impl WnacgClient {
         }
         // TODO: 可以并发获取body和img_list
         let img_list = self.get_img_list(id).await?;
-        let comic =
-            Comic::from_html(&self.app, &body, img_list).context("将body解析为Comic失败")?;
+        // 尝试将body解析为Comic
+        let comic = Comic::from_html(&self.app, &body, img_list)
+            .context(format!("将body和解析为Comic失败: {body}"))?;
 
         Ok(comic)
     }
@@ -235,9 +240,9 @@ impl WnacgClient {
         if status != StatusCode::OK {
             return Err(anyhow!("预料之外的状态码({status}): {body}"));
         }
-        // 解析html
+        // 尝试将body解析为GetFavoriteResult
         let get_favorite_result = GetFavoriteResult::from_html(&self.app, &body)
-            .context("将body转换为GetFavoriteResult失败")?;
+            .context(format!("将body解析为GetFavoriteResult失败: {body}"))?;
         Ok(get_favorite_result)
     }
 
