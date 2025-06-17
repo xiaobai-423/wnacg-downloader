@@ -25,16 +25,22 @@ impl UserProfile {
         if !is_login {
             return Err(anyhow!("未登录，cookie已过期或cookie无效"));
         }
+
+        let document_html = document.html();
+
         // 获取头像与用户名的<a>
         let a = document
             .select(&Selector::parse(".top_utab.ui > a").to_anyhow()?)
             .next()
-            .context("没有找到头像与用户名的<a>")?;
+            .context(format!("没有找到头像与用户名的<a>: {document_html}"))?;
+        let a_html = a.html();
         // 获取头像url
-        let avatar = a
+        let img = a
             .select(&Selector::parse("img").to_anyhow()?)
             .next()
-            .context("没有在头像与用户名的<a>中找到<img>")?
+            .context(format!("没有在头像与用户名的<a>中找到<img>: {a_html}"))?;
+
+        let avatar = img
             .attr("src")
             .map_or("https://www.wn01.uk/userpic/nopic.png".to_string(), |src| {
                 format!("https://www.wn01.uk/{src}")
@@ -43,7 +49,7 @@ impl UserProfile {
         let username = a
             .text()
             .next()
-            .context("没有找到用户名相关的文本")?
+            .context(format!("没有找到用户名相关的文本: {a_html}"))?
             .trim()
             .to_string();
 

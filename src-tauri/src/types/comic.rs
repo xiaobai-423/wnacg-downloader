@@ -37,65 +37,86 @@ pub struct Comic {
 }
 
 impl Comic {
+    // TODO: 拆分成多个函数
+    #[allow(clippy::too_many_lines)]
     pub fn from_html(app: &AppHandle, html: &str, img_list: ImgList) -> anyhow::Result<Comic> {
         let document = Html::parse_document(html);
 
-        let id = document
+        let document_html = document.html();
+
+        let link = document
             .select(&Selector::parse("head > link").to_anyhow()?)
             .next()
-            .context("没有找到漫画id的<link>")?
-            .attr("href")
-            .context("漫画id的<link>没有href属性")?
-            .strip_prefix("/feed-index-aid-")
-            .context("漫画id的<link>不是以`/feed-index-aid-`开头")?
-            .strip_suffix(".html")
-            .context("漫画id的<link>不是以`.html`结尾")?
-            .parse::<i64>()
-            .context("漫画id不是整数")?;
+            .context(format!("没有找到漫画id的<link>: {document_html}"))?;
+        let link_html = link.html();
 
-        let title = document
+        let id = link
+            .attr("href")
+            .context(format!("漫画id的<link>没有href属性: {link_html}"))?
+            .strip_prefix("/feed-index-aid-")
+            .context(format!(
+                "漫画id的<link>不是以`/feed-index-aid-`开头: {link_html}"
+            ))?
+            .strip_suffix(".html")
+            .context(format!("漫画id的<link>不是以`.html`结尾: {link_html}"))?
+            .parse::<i64>()
+            .context(format!("漫画id不是整数: {link_html}"))?;
+
+        let h2 = document
             .select(&Selector::parse("#bodywrap > h2").to_anyhow()?)
             .next()
-            .context("没有找到漫画标题的<h2>")?
+            .context(format!("没有找到漫画标题的<h2>: {document_html}"))?;
+        let h2_html = h2.html();
+
+        let title = h2
             .text()
             .next()
-            .context("漫画标题的<h2>没有文本")?;
+            .context(format!("漫画标题的<h2>没有文本: {h2_html}"))?;
         let title = filename_filter(title);
 
-        let cover_src = document
+        let img = document
             .select(&Selector::parse(".asTBcell.uwthumb > img").to_anyhow()?)
             .next()
-            .context("没有找到封面的<img>")?
+            .context(format!("没有找到封面的<img>: {document_html}"))?;
+        let img_html = img.html();
+
+        let cover_src = img
             .attr("src")
-            .context("封面的<img>没有src属性")?
+            .context(format!("封面的<img>没有src属性: {img_html}"))?
             .trim_start_matches('/')
             .to_string();
         let cover = format!("https://{cover_src}");
 
-        let category = document
+        let label = document
             .select(&Selector::parse(".asTBcell.uwconn > label").to_anyhow()?)
             .next()
-            .context("没有找到分类的<label>")?
+            .context(format!("没有找到分类的<label>: {document_html}"))?;
+        let label_html = label.html();
+
+        let category = label
             .text()
             .next()
-            .context("分类的<label>没有文本")?
+            .context(format!("分类的<label>没有文本: {label_html}"))?
             .strip_prefix("分類：")
-            .context("分类<label>的文本不是以`分類：`开头")?
+            .context(format!("分类<label>的文本不是以`分類：`开头: {label_html}"))?
             .to_string();
 
-        let image_count = document
+        let label = document
             .select(&Selector::parse(".asTBcell.uwconn > label").to_anyhow()?)
             .nth(1)
-            .context("没有找到图片数量的<label>")?
+            .context(format!("没有找到图片数量的<label>: {document_html}"))?;
+        let label_html = label.html();
+
+        let image_count = label
             .text()
             .next()
-            .context("图片数量的<label>没有文本")?
+            .context(format!("图片数量的<label>没有文本: {label_html}"))?
             .strip_prefix("頁數：")
-            .context("图片数量的文本不是以`頁數：`开头")?
+            .context(format!("图片数量的文本不是以`頁數：`开头: {label_html}"))?
             .strip_suffix("P")
-            .context("图片数量的文本不是以`P`结尾")?
+            .context(format!("图片数量的文本不是以`P`结尾: {label_html}"))?
             .parse::<i64>()
-            .context("图片数量不是整数")?;
+            .context(format!("图片数量不是整数: {label_html}"))?;
 
         let mut tags = vec![];
         let tag_selector = Selector::parse(".tagshow").to_anyhow()?;
@@ -106,7 +127,12 @@ impl Comic {
             };
             let name = text.trim().to_string();
 
-            let href = a.attr("href").context("标签的<a>没有href属性")?.to_string();
+            let a_html = a.html();
+            let href = a
+                .attr("href")
+                .context(format!("标签的<a>没有href属性: {a_html}"))?
+                .to_string();
+            // TODO: 这里应该用API_DOMAIN
             let url = format!("https://www.wn01.uk{href}");
             tags.push(Tag { name, url });
         }
@@ -114,7 +140,7 @@ impl Comic {
         let intro = document
             .select(&Selector::parse(".asTBcell.uwconn > p").to_anyhow()?)
             .next()
-            .context("没有找到简介的<p>")?
+            .context(format!("没有找到简介的<p>: {document_html}"))?
             .html();
 
         let is_downloaded = app
