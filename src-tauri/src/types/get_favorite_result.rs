@@ -194,7 +194,7 @@ impl ComicInFavorite {
     fn get_id_and_title(div: &ElementRef) -> anyhow::Result<(i64, String)> {
         let div_html = div.html();
         let a = div
-            .select(&Selector::parse(".l_title > aaaaa").to_anyhow()?)
+            .select(&Selector::parse(".l_title > a").to_anyhow()?)
             .next()
             .context(format!("没有在漫画的<div>中找到标题的<a>: {div_html}"))?;
 
